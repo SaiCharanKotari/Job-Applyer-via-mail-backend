@@ -64,7 +64,12 @@ router.post('/send', auth, (req, res) => {
           }
         ]
       };
-      await transporter.sendMail(mailOptions);
+      await Promise.race([
+        transporter.sendMail(mailOptions),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Email timeout')), 25000) // 25 seconds
+        )
+      ]);
       res.status(201).json({ success: true, message: "Email sent with PDF attachment!" });
     });
   } catch (err) {
