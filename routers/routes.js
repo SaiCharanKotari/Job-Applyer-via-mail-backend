@@ -10,7 +10,11 @@ const IP = require('../schema/ipSchema');
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post('/', auth, (req, res) => {
+  // try {
   res.status(201).json({ success: true, user: req.user });
+  // } catch (error) {
+  //   console.log(error);
+  // }
 });
 router.get('/', async (req, res) => {
   try {
@@ -145,7 +149,7 @@ router.post('/login', async (req, res) => {
 
       res.cookie('token', token, {
         httpOnly: true,
-        secure: false,
+        secure: true,
         sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
