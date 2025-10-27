@@ -31,11 +31,12 @@ router.get('/', async (req, res) => {
   }
 })
 
+
 router.post('/send', auth, (req, res) => {
   try {
     const { userId } = req.user;
     const { subject, message, mail } = req.body;
-    const sql = "SELECT pdf, pdfname FROM users WHERE id = ?";
+    const sql = "SELECT pdf, pdfname FROM defaultdb WHERE id = ?";
     db.query(sql, [userId], async (err, result) => {
       if (err || !result.length) return res.status(404).json({ success: false, message: "User or PDF not found" });
       const user = result[0];
@@ -74,18 +75,18 @@ router.post('/apply/:id', auth, upload.single('pdf'), async (req, res) => {
     const { id } = req.params;
     const file = req.file || false;
     const { subject, message, filename } = req.body;
-    db.query('SELECT pdf FROM users where id=?', [id], (err, result) => {
+    db.query('SELECT pdf FROM defaultdb where id=?', [id], (err, result) => {
       if (err) { return res.status(500).json({ success: false, message: "database problem" }) };
       if (!file && (result.length === 0)) return res.status(400).json({ success: false, message: "No file uploaded" });
     })
     if (!file) {
-      const sql = "UPDATE users SET subject= ? ,message=?,pdfname=?  WHERE id = ?";
+      const sql = "UPDATE defaultdb SET subject= ? ,message=?,pdfname=?  WHERE id = ?";
       db.query(sql, [subject, message, filename, id], (err, result) => {
         if (err) { return res.status(500).json({ success: false, message: "database problem" }) };
         res.status(201).json({ success: true, message: "File uploaded successfully!" });
       });
     } else {
-      const sql = "UPDATE users SET pdf = ?,subject= ? ,message=?,pdfname=?  WHERE id = ?";
+      const sql = "UPDATE defaultdb SET pdf = ?,subject= ? ,message=?,pdfname=?  WHERE id = ?";
       db.query(sql, [file.buffer, subject, message, filename, id], (err, result) => {
         if (err) { return res.status(500).json({ success: false, message: "database problem" }) };
         res.status(201).json({ success: true, message: "File uploaded successfully!" });
@@ -99,7 +100,7 @@ router.post('/apply/:id', auth, upload.single('pdf'), async (req, res) => {
 router.get('/apply', auth, async (req, res) => {
   try {
     const user = req.user;
-    const sql = "SELECT subject, message, pdf,pdfname FROM users WHERE id=?";
+    const sql = "SELECT subject, message, pdf,pdfname FROM defaultdb WHERE id=?";
     db.query(sql, [user.userId], (err, result) => {
       if (err) return res.status(500).json({ success: false, message: "database problem" });
       if (result.length === 0) return res.status(404).json({ success: false, message: "Not found" });
@@ -119,7 +120,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, message: "Please Enter Credentials" });
     }
 
-    db.query('SELECT * FROM users WHERE email=?', [mail], async (err, results) => {
+    db.query('SELECT * FROM defaultdb WHERE email=?', [mail], async (err, results) => {
       if (err) {
         console.log(err);
         return res.status(500).json({ success: false, message: "Server Problem" });
@@ -173,7 +174,7 @@ router.post('/signup', async (req, res) => {
     if (password.length < 8) {
       return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
     }
-    db.query('SELECT * FROM users WHERE email=?', [email], async (err, results) => {
+    db.query('SELECT * FROM defaultdb WHERE email=?', [email], async (err, results) => {
       if (err) {
         return res.status(500).json({ success: false, message: "Server Problem" });
       }
@@ -182,7 +183,7 @@ router.post('/signup', async (req, res) => {
       }
       try {
         const hashpass = await bcrypt.hash(password, 10);
-        db.query('INSERT INTO users (email, password) VALUES (?, ?)', [email, hashpass], (err, results) => {
+        db.query('INSERT INTO defaultdb (email, password) VALUES (?, ?)', [email, hashpass], (err, results) => {
           if (err) {
             console.log(err);
             return res.status(500).json({ success: false, message: "Server Problem" });
