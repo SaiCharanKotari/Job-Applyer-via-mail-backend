@@ -84,12 +84,14 @@ router.post('/apply/:id', auth, upload.single('pdf'), async (req, res) => {
     if (!file) {
       const sql = "UPDATE users SET subject= ? ,message=?,pdfname=?  WHERE id = ?";
       db.query(sql, [subject, message, filename, id], (err, result) => {
+        console.log('nofile', err);
         if (err) { return res.status(500).json({ success: false, message: "database problem" }) };
         res.status(201).json({ success: true, message: "File uploaded successfully!" });
       });
     } else {
       const sql = "UPDATE users SET pdf = ?,subject= ? ,message=?,pdfname=?  WHERE id = ?";
       db.query(sql, [file.buffer, subject, message, filename, id], (err, result) => {
+        console.log('nofile', err);
         if (err) { return res.status(500).json({ success: false, message: "database problem" }) };
         res.status(201).json({ success: true, message: "File uploaded successfully!" });
       });
