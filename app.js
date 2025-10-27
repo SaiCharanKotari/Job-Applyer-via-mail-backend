@@ -1,0 +1,23 @@
+const dotenv = require('dotenv');
+dotenv.config();
+const express = require('express');
+const router = require('./routers/routes');
+const cors = require('cors');
+const cookie = require('cookie-parser');
+const app = express();
+const mongoDB = require('./config/mDB')
+mongoDB();
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+app.set('trust proxy', true);
+app.use(express.json());
+app.use(cookie());
+app.use('/', router);
+
+app.listen(process.env.PORT || 5000, () => {
+  console.log("this app is running on port 5000 or some other");
+})
+
