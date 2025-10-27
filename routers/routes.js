@@ -79,7 +79,6 @@ router.post('/apply/:id', auth, upload.single('pdf'), async (req, res) => {
     const file = req.file || false;
     const { subject, message, filename } = req.body;
     db.query('SELECT pdf FROM users where id=?', [id], (err, result) => {
-      if (err) { return res.status(500).json({ success: false, message: "database problem" }) };
       if (!file && (result.length === 0)) return res.status(400).json({ success: false, message: "No file uploaded" });
     })
     if (!file) {
