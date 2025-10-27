@@ -40,43 +40,78 @@ router.post('/send', auth, (req, res) => {
     const { userId } = req.user;
     const { subject, message, mail } = req.body;
     const sql = "SELECT pdf, pdfname FROM users WHERE id = ?";
+
     db.query(sql, [userId], async (err, result) => {
-      if (err || !result.length) return res.status(404).json({ success: false, message: "User or PDF not found" });
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+
+      if (!result.length) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
       const user = result[0];
-      const pdfBase64 = user.pdf.toString("base64");
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.MAIL_USER,
-          pass: process.env.MAIL_PASS
-        }
-      });
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: mail,
-        subject: `${subject}`,
-        text: `${message}`,
-        attachments: [
-          {
-            filename: user.pdfname || "document.pdf",
-            content: pdfBase64,
-            encoding: "base64"
-          }
-        ]
-      };
-      await Promise.race([
-        transporter.sendMail(mailOptions),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Email timeout')), 25000) // 25 seconds
-        )
-      ]);
-      res.status(201).json({ success: true, message: "Email sent with PDF attachment!" });
+
+      // Check if PDF exists
+      if (!user.pdf) {
+        return res.status(404).json({ success: false, message: "No PDF found" });
+      }
+
+      try {
+        const pdfBase64 = user.pdf.toString("base64");
+
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.MAIL_USER,
+            pass: process.env.MAIL_PASS
+          },
+          // ✅ Add timeout settings
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000,
+          socketTimeout: 10000
+        });
+
+        const mailOptions = {
+          from: process.env.MAIL_USER, // Use MAIL_USER, not EMAIL
+          to: mail,
+          subject: subject,
+          text: message,
+          attachments: [
+            {
+              filename: user.pdfname || "document.pdf",
+              content: pdfBase64,
+              encoding: "base64"
+            }
+          ]
+        };
+
+        // ✅ Send email with timeout handling
+        await Promise.race([
+          transporter.sendMail(mailOptions),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Email timeout')), 25000) // 25 seconds
+          )
+        ]);
+
+        res.status(201).json({ success: true, message: "Email sent successfully!" });
+
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        res.status(500).json({
+          success: false,
+          message: "Failed to send email",
+          error: emailError.message
+        });
+      }
     });
+
   } catch (err) {
-    console.log(err);
+    console.error('Server error:', err);
     res.status(500).json({ success: false, message: "Server error" });
   }
-})
+});
 
 router.post('/apply/:id', auth, upload.single('pdf'), async (req, res) => {
   try {
