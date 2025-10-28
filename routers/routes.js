@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const db = require('../config/config');
 const auth = require('../middleware/jwtauth');
 const multer = require('multer');
 const IP = require('../schema/ipSchema');
 const upload = multer({ storage: multer.memoryStorage() });
 
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 router.post('/', auth, (req, res) => {
   // try {
   res.status(201).json({ success: true, user: req.user });
@@ -39,78 +40,88 @@ router.post('/send', auth, (req, res) => {
   try {
     const { userId } = req.user;
     const { subject, message, mail } = req.body;
-    const sql = "SELECT pdf, pdfname FROM users WHERE id = ?";
+    const sql = "SELECT pdf, email,pdfname,mail FROM users WHERE id = ?";
 
     db.query(sql, [userId], async (err, result) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ success: false, message: "Database error" });
       }
-
       if (!result.length) {
         return res.status(404).json({ success: false, message: "User not found" });
       }
-
       const user = result[0];
-
-      // Check if PDF exists
       if (!user.pdf) {
         return res.status(404).json({ success: false, message: "No PDF found" });
       }
 
-      try {
-        const pdfBase64 = user.pdf.toString("base64");
-
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS
-          },
-          // ✅ Add timeout settings
-          connectionTimeout: 10000, // 10 seconds
-          greetingTimeout: 10000,
-          socketTimeout: 10000
-        });
-
-        const mailOptions = {
-          from: process.env.MAIL_USER, // Use MAIL_USER, not EMAIL
-          to: mail,
-          subject: subject,
-          text: message,
-          attachments: [
-            {
-              filename: user.pdfname || "document.pdf",
-              content: pdfBase64,
-              encoding: "base64"
-            }
-          ]
-        };
-
-        // ✅ Send email with timeout handling
-        await Promise.race([
-          transporter.sendMail(mailOptions),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Email timeout')), 25000) // 25 seconds
-          )
-        ]);
-
-        res.status(201).json({ success: true, message: "Email sent successfully!" });
-
-      } catch (emailError) {
-        console.error('Email sending error:', emailError);
-        res.status(500).json({
-          success: false,
-          message: "Failed to send email",
-          error: emailError.message
-        });
-      }
+      res.status(201).json({ success: true, message: "Email sent successfully!" });
+      (async () => {
+        try {
+          const pdfBase64 = user.pdf.toString("base64");
+          const msg = {
+            to: mail,
+            from: user.email,
+            subject: subject,
+            text: message,
+            templateId: 'd-d4cb3fe5751b40d585a0606ede6275af',
+            attachments: [
+              {
+                content: pdfBase64,
+                filename: user.pdfname || "document.pdf",
+                type: "application/pdf",
+                disposition: "attachment"
+              }
+            ],
+            dynamic_template_data: {
+              subject_ui: subject,
+              message_ui: message,
+            },
+          };
+          await sgMail.send(msg);
+          console.log('✅ Email sent successfully via SendGrid to:', mail);
+        } catch (emailError) {
+          console.error('❌ SendGrid error:', emailError);
+          if (emailError.response) {
+            console.error('SendGrid response:', emailError.response.body);
+          }
+        }
+      })();
     });
-
   } catch (err) {
     console.error('Server error:', err);
     res.status(500).json({ success: false, message: "Server error" });
   }
+  // const transporter = nodemailer.createTransport({
+  //   service: "gmail",
+  //   auth: {
+  //     user: process.env.MAIL_USER,
+  //     pass: process.env.MAIL_PASS
+  //   },
+  //   connectionTimeout: 10000,
+  //   greetingTimeout: 10000,
+  //   socketTimeout: 10000
+  // });
+
+  // const mailOptions = {
+  //   from: process.env.MAIL_USER, // Use MAIL_USER, not EMAIL
+  //   to: mail,
+  //   subject: subject,
+  //   text: message,
+  //   attachments: [
+  //     {
+  //       filename: user.pdfname || "document.pdf",
+  //       content: pdfBase64,
+  //       encoding: "base64"
+  //     }
+  //   ]
+  // };
+  // await Promise.race([
+  //   transporter.sendMail(mailOptions),
+  //   new Promise((_, reject) =>
+  //     setTimeout(() => reject(new Error('Email timeout')), 25000) // 25 seconds
+  //   )
+  // ]);
 });
 
 router.post('/apply/:id', auth, upload.single('pdf'), async (req, res) => {
