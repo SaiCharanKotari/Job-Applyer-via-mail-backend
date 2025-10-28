@@ -8,16 +8,16 @@ const app = express();
 const mongoDB = require('./config/mDB')
 mongoDB();
 
+app.set('trust proxy', true);
+app.use(express.json());
+app.use(cookie());
 app.use(cors({
-  origin: '*',
+  origin: ['https://job-applyer-via-mail-frontend.vercel.app', 'https:localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['Set-Cookie']
 }));
-app.set('trust proxy', true);
-app.use(express.json());
-app.use(cookie());
 app.use('/', router);
 
 app.listen(process.env.PORT || 5000, () => {
