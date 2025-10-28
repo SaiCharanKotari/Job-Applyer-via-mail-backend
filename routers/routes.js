@@ -41,7 +41,7 @@ router.post('/send', auth, (req, res) => {
     const { userId } = req.user;
     const { subject, message, mail } = req.body;
     const sql = "SELECT pdf, email,pdfname FROM users WHERE id = ?";
-
+    if (!mail) { return res.status(400).json({ success: false, message: "Please Enter Email" }); }
     db.query(sql, [userId], async (err, result) => {
       if (err) {
         console.error('Database error:', err);
