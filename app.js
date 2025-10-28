@@ -9,7 +9,7 @@ const mongoDB = require('./config/mDB')
 mongoDB();
 
 app.use(cors({
-  origin: 'https://job-applyer-via-mail-frontend.vercel.app/',
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
