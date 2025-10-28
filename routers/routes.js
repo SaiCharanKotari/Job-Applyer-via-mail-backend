@@ -61,10 +61,7 @@ router.post('/send', auth, (req, res) => {
           const pdfBase64 = user.pdf.toString("base64");
           const msg = {
             to: mail,
-            from: {
-              email: user.email, // verified sender or domain
-              name: "JobApplyer"
-            },
+            from: user.email, // verified sender or domain
             subject: subject,
             text: message,
             templateId: 'd-d4cb3fe5751b40d585a0606ede6275af',
